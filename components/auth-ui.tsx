@@ -148,6 +148,9 @@ export function RegisterForm({ pkg }: { pkg: string | null }) {
       <button type="submit" className="btn btn-aqua btn-block" style={{ marginTop: "1.75rem", padding: "1rem" }} disabled={pending}>
         {pending ? "Creating account…" : <>Create Account {arrow}</>}
       </button>
+      <p style={{ marginTop: "1.5rem", textAlign: "center", fontSize: "0.875rem", color: "var(--foreground)", opacity: 0.65 }}>
+        Already have an account? <Link href="/login" style={{ color: "var(--primary)", fontWeight: 600 }}>Login</Link>
+      </p>
       <p style={{ marginTop: "1rem", fontSize: "0.6875rem", textAlign: "center", color: "var(--foreground)", opacity: 0.55 }}>
         By signing up you agree to Incossify&apos;s Terms &amp; Privacy Policy.
       </p>
