@@ -9,13 +9,19 @@ import {
 import {
   getUserByUid, getUserByEmailOrUsername, hashPassword, verifyPassword,
   createSession, destroySession, clearSessionCookie, setSessionCookie,
-  genId,
+  getSessionUser, genId,
 } from "./auth";
 import { loadConfig, MIN_WITHDRAWAL, PACKAGES } from "./config";
 import { creditWithLedger, todayKey, TASK_CATALOG, SHARE_CLAIMS, SONG_REWARD, musicSongIds } from "./data";
 import type { User, Withdrawal } from "./types";
 
 // ─────────────────────────── Auth ───────────────────────────
+
+/** Landing CTA: new visitors register, returning members sign in. */
+export async function landingEntryAction(): Promise<string> {
+  const u = await getSessionUser();
+  return u ? "/login" : "/register";
+}
 
 export async function registerAction(_prev: unknown, formData: FormData): Promise<{ error?: string }> {
   const fullName = String(formData.get("fullName") || "").trim();

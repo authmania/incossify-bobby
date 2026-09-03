@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { landingEntryAction } from "@/lib/actions";
 
 // ── Landing fx (port of princess index.html script) ──
 export function LandingFx({ children }: { children: React.ReactNode }) {
@@ -96,6 +98,20 @@ function Stars() {
   );
 }
 
+function HeroCta() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button className="btn btn-aqua" type="button" disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        router.push(await landingEntryAction());
+      }}>
+      {busy ? "One sec…" : "Login"} <ArrowRight />
+    </button>
+  );
+}
+
 const Landing = () => (
   <LandingFx>
     <div id="root">
@@ -150,7 +166,7 @@ const Landing = () => (
                 <h1>Earn daily in <span className="text-gradient-aqua">British Pound</span> &amp; Kuwait Dinar</h1>
                 <p className="sub">Incossify pays you for simple everyday tasks — shares, reshares, status posts, surveys, ghostwriting, movie reviews and video clipping. Activate once, get 100% of your registration fee back as a welcome bonus, then earn every single day.</p>
                 <div className="ctas">
-                  <Link className="btn btn-aqua" href="/register">Create your account <ArrowRight /></Link>
+                  <HeroCta />
                   <a href="#packages" className="btn btn-glass">See packages</a>
                 </div>
                 <div className="stats">
