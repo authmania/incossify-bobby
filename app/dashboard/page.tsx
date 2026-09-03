@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { BASE_URL } from "@/lib/config";
+import { BASE_URL, loadConfig } from "@/lib/config";
 import { todayKey } from "@/lib/data";
 import { DashboardClient } from "@/components/dashboard";
 
 export default async function DashboardPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  const config = await loadConfig();
 
   const day = todayKey();
   const ledger = user.ledger?.[day] || {};
@@ -34,6 +35,7 @@ export default async function DashboardPage() {
           rewards: user.wallets?.rewards || 0,
         },
       }}
+      tgLink={config.telegramLink || config.supportTelegram}
       day={day}
       ledger={ledger}
     />

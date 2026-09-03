@@ -36,12 +36,13 @@ function toasts(msg: string) {
   setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 350); }, 2400);
 }
 
-export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: string; ledger: Record<string, string> }) {
+export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot; day: string; ledger: Record<string, string>; tgLink?: string }) {
   const router = useRouter();
   const songs: Song[] = useMemo(() => musicSongIds(day), [day]);
   const status = (id: string) => ledger[id] || "available";
   const claimedShares = SHARES.filter((s) => status(s.id) === "completed").length;
   const playedSongs = songs.filter((s) => status(s.id) === "completed").length;
+  const allDone = claimedShares === SHARES.length && playedSongs === songs.length;
 
   const [currency, setCurrency] = useState<string>("NGN");
   const [rate, setRate] = useState(RATE_DEFAULT);
@@ -49,10 +50,42 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
   const [menuOpen, setMenuOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
+  const [popup, setPopup] = useState<"tg" | "task" | null>(null);
+  const popupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [music, setMusic] = useState<Song | null>(null);
   const [busyShare, setBusyShare] = useState<string | null>(null);
   const [musicMeta, setMusicMeta] = useState<Record<string, { url: string; art: string }>>({});
   const audio = useRef<HTMLAudioElement | null>(null);
+
+  // Alternating nag popups (nextel-bobby logic): Telegram first, then the daily
+  // task popup 13s after each close — but only while today's tasks aren't done.
+  const queuePopup = (kind: "tg" | "task", ms: number) => {
+    if (popupTimer.current) clearTimeout(popupTimer.current);
+    popupTimer.current = setTimeout(() => setPopup(kind), ms);
+  };
+  useEffect(() => {
+    if (allDone) {
+      setPopup(null);
+      if (popupTimer.current) clearTimeout(popupTimer.current);
+      return;
+    }
+    const t = setTimeout(() => setPopup("tg"), 1600);
+    return () => clearTimeout(t);
+  }, [allDone]);
+  useEffect(() => () => { if (popupTimer.current) clearTimeout(popupTimer.current); }, []);
+  const closeTelegram = () => {
+    setPopup(null);
+    if (!allDone) queuePopup("task", 13000);
+  };
+  const closeTask = () => {
+    setPopup(null);
+    if (!allDone) queuePopup("tg", 13000);
+  };
+  const goTask = () => {
+    closeTask();
+    setTimeout(() => document.getElementById("claimSection")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+  const tgUrl = tgLink || "https://t.me/bobbysupport";
 
   // Prefetch today's track previews + artwork on load (like princess loadMusicUrls),
   // so opening a song plays ONE chosen source instead of swapping audio mid-play.
@@ -385,6 +418,42 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
       {/* Music modal */}
       {music && (
         <MusicModal song={music} reward={SONG_REWARD} money={money} url={musicMeta[music.id]?.url || ""} art={musicMeta[music.id]?.art || ""} onClose={() => { setMusic(null); }} onClaim={finishSong} />
+      )}
+
+      {/* Join Telegram popup */}
+      {popup === "tg" && (
+        <div className="inc-pop">
+          <div className="inc-pop-card">
+            <button className="inc-pop-close" type="button" aria-label="Close" onClick={closeTelegram}>&times;</button>
+            <div className="inc-pop-icon tg">
+              <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            </div>
+            <h3>Join our Official Telegram channel!</h3>
+            <p>Get real time updates, video tutorials, and insider strategies to boost your earnings!</p>
+            <a className="inc-pop-cta" href={tgUrl} target="_blank" rel="noopener noreferrer">
+              <span>CLICK HERE</span>
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Complete daily tasks popup */}
+      {popup === "task" && (
+        <div className="inc-pop">
+          <div className="inc-pop-card">
+            <button className="inc-pop-close" type="button" aria-label="Close" onClick={closeTask}>&times;</button>
+            <div className="inc-pop-icon task">
+              <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="2" /><path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M8 14l2.5 2.5L16 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </div>
+            <h3>Complete your daily tasks</h3>
+            <p>Claim your shares and play today&apos;s songs to keep your earnings active. Finish your tasks now — it only takes a few minutes.</p>
+            <button className="inc-pop-cta" type="button" onClick={goTask}>
+              <span>GO TO TASK</span>
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
