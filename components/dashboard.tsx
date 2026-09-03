@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { claimShareAction, claimSongAction, logoutAction } from "@/lib/actions";
@@ -38,7 +38,7 @@ function toasts(msg: string) {
 
 export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: string; ledger: Record<string, string> }) {
   const router = useRouter();
-  const songs: Song[] = musicSongIds(day);
+  const songs: Song[] = useMemo(() => musicSongIds(day), [day]);
   const status = (id: string) => ledger[id] || "available";
   const claimedShares = SHARES.filter((s) => status(s.id) === "completed").length;
   const playedSongs = songs.filter((s) => status(s.id) === "completed").length;
@@ -51,7 +51,32 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
   const [doneOpen, setDoneOpen] = useState(false);
   const [music, setMusic] = useState<Song | null>(null);
   const [busyShare, setBusyShare] = useState<string | null>(null);
+  const [musicMeta, setMusicMeta] = useState<Record<string, { url: string; art: string }>>({});
   const audio = useRef<HTMLAudioElement | null>(null);
+
+  // Prefetch today's track previews + artwork on load (like princess loadMusicUrls),
+  // so opening a song plays ONE chosen source instead of swapping audio mid-play.
+  useEffect(() => {
+    let alive = true;
+    Promise.all(
+      songs.map(async (s) => {
+        try {
+          const res = await fetch("https://itunes.apple.com/search?term=" + encodeURIComponent(s.term) + "&entity=song&limit=1");
+          const j = await res.json();
+          const r = j?.results?.[0];
+          return { id: s.id, url: r?.previewUrl || "", art: r?.artworkUrl100 ? r.artworkUrl100.replace("/100x100bb.jpg", "/300x300bb.jpg") : "" };
+        } catch {
+          return { id: s.id, url: "", art: "" };
+        }
+      })
+    ).then((list) => {
+      if (!alive) return;
+      const m: Record<string, { url: string; art: string }> = {};
+      list.forEach((x) => (m[x.id] = x));
+      setMusicMeta(m);
+    });
+    return () => { alive = false; };
+  }, [day, songs]);
 
   useEffect(() => {
     const saved = localStorage.getItem("incossify_currency");
@@ -282,10 +307,13 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
           <div id="musicList">
             {songs.map((s) => {
               const done = status(s.id) === "completed";
+              const meta = musicMeta[s.id];
               return (
                 <div className="music-card" key={s.id}>
-                  <div className="music-cover fallback">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "1.25rem", width: "1.25rem" }}><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                  <div className={`music-cover ${meta?.art ? "" : "fallback"}`}>
+                    {meta?.art
+                      ? <img src={meta.art} alt={s.song} loading="lazy" />
+                      : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "1.25rem", width: "1.25rem" }}><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>}
                   </div>
                   <div className="music-info"><b>{s.artist}</b><span>{s.song}</span></div>
                   <button className={`music-play ${done ? "played" : ""}`} type="button" disabled={done} onClick={() => openMusic(s)}>
@@ -356,7 +384,7 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
 
       {/* Music modal */}
       {music && (
-        <MusicModal song={music} reward={SONG_REWARD} money={money} onClose={() => { setMusic(null); }} onClaim={async () => { await claimSong(); setMusic(null); }} />
+        <MusicModal song={music} reward={SONG_REWARD} money={money} url={musicMeta[music.id]?.url || ""} art={musicMeta[music.id]?.art || ""} onClose={() => { setMusic(null); }} onClaim={async () => { await claimSong(); setMusic(null); }} />
       )}
     </div>
   );
@@ -377,28 +405,23 @@ function MenuIc({ d, circle }: { d: string; circle?: boolean }) {
   return <svg width="18" height="18" fill="var(--purple-2)" viewBox="0 0 24 24"><path d={d} />{circle ? <circle cx="9" cy="7" r="4" /> : null}</svg>;
 }
 
-function MusicModal({ song, reward, money, onClose, onClaim }: { song: Song; reward: number; money: (n: number) => string; onClose: () => void; onClaim: () => Promise<void> }) {
+function MusicModal({ song, reward, money, url, art, onClose, onClaim }: { song: Song; reward: number; money: (n: number) => string; url: string; art: string; onClose: () => void; onClaim: () => Promise<void> }) {
   const [earn, setEarn] = useState(0);
   const [sec, setSec] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [art, setArt] = useState("");
   const [done, setDone] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
+  const started = useRef(false);
   const progress = Math.min(100, (sec / 3.5) * 100);
 
+  // Play ONE source chosen up front — the real preview if we already have it,
+  // otherwise the bundled sample. Never swap mid-play (princess behaviour).
   useEffect(() => {
-    let alive = true;
-    fetch("https://itunes.apple.com/search?term=" + encodeURIComponent(song.term) + "&entity=song&limit=1")
-      .then((r) => r.json())
-      .then((j) => {
-        const res = j?.results?.[0];
-        if (!alive || !res) return;
-        if (res.artworkUrl100) setArt(res.artworkUrl100.replace("/100x100bb.jpg", "/300x300bb.jpg"));
-        if (res.previewUrl && audio.current) { audio.current.src = res.previewUrl; audio.current.load(); audio.current.play().catch(() => {}); }
-      })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, [song]);
+    if (!audio.current || started.current) return;
+    started.current = true;
+    audio.current.src = url || "/music-sample.mpeg";
+    audio.current.load();
+    audio.current.play().catch(() => {});
+  }, [url]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -412,7 +435,7 @@ function MusicModal({ song, reward, money, onClose, onClaim }: { song: Song; rew
 
   useEffect(() => {
     if (sec >= 3) setEarn(Math.floor((Math.min(sec, 11) / 11) * reward));
-    if (sec >= 11 && !done) { setDone(true); setPlaying(false); audio.current?.pause(); }
+    if (sec >= 11 && !done) { setDone(true); audio.current?.pause(); }
   }, [sec, done, reward]);
 
   const fmtTime = (s: number) => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
@@ -432,7 +455,7 @@ function MusicModal({ song, reward, money, onClose, onClaim }: { song: Song; rew
           <p id="tmArtist">{song.artist}</p>
           <div className="tm-progress"><div className="tm-progress-bar" style={{ width: progress + "%" }}></div></div>
           <div className="tm-time-row"><span>{fmtTime(Math.min(sec, 11))}</span><span>{fmtTime(11)}</span></div>
-          <audio ref={audio} src="/music-sample.mpeg" preload="auto" playsInline autoPlay />
+          <audio ref={audio} preload="auto" playsInline />
           <div className="tm-earn" style={{ display: earn > 0 ? "block" : "none" }}><span>Earnings</span><strong>{money(earn)}</strong></div>
         </div>
         <div className="tm-actions">

@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export const SITE_NAME = "Incossify";
 export const CONFIG_DOC_PATH = "account/incossifybobby";
-export const MIN_WITHDRAWAL = 15000;
+export const MIN_WITHDRAWAL = 56000;
 export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://incossifyweb.online";
 
 export const PACKAGES: Record<"starterkit" | "apex", Package> = {
