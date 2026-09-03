@@ -339,7 +339,7 @@ const Landing = () => (
                 <div className="reveal" style={{ transitionDelay: `${i * 90}ms` }} key={name}>
                   <figure className="testimonial glass">
                     <Stars />
-                    <blockquote>"{quote}"</blockquote>
+                    <blockquote>{quote}</blockquote>
                     <figcaption>
                       <span className="avatar">{av}</span>
                       <span><b>{name}</b><br /><span style={{ fontSize: "0.75rem", color: "var(--foreground)", opacity: 0.6 }}>{city}</span></span>

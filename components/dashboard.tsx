@@ -44,7 +44,11 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
   const playedSongs = songs.filter((s) => status(s.id) === "completed").length;
   const allDone = claimedShares === SHARES.length && playedSongs === songs.length;
 
-  const [currency, setCurrency] = useState<string>("NGN");
+  const [currency, setCurrency] = useState<string>(() => {
+    if (typeof window === "undefined") return "NGN";
+    const saved = localStorage.getItem("incossify_currency");
+    return saved === "GBP" || saved === "NGN" ? saved : "NGN";
+  });
   const [rate, setRate] = useState(RATE_DEFAULT);
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,7 +69,6 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
   };
   useEffect(() => {
     if (allDone) {
-      setPopup(null);
       if (popupTimer.current) clearTimeout(popupTimer.current);
       return;
     }
@@ -112,8 +115,6 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
   }, [day, songs]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("incossify_currency");
-    if (saved === "GBP" || saved === "NGN") setCurrency(saved);
     fetch("https://open.er-api.com/v6/latest/GBP")
       .then((r) => r.json())
       .then((d) => d?.rates?.NGN && setRate(d.rates.NGN))
@@ -421,7 +422,7 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
       )}
 
       {/* Join Telegram popup */}
-      {popup === "tg" && (
+      {popup === "tg" && !allDone && (
         <div className="inc-pop">
           <div className="inc-pop-card">
             <button className="inc-pop-close" type="button" aria-label="Close" onClick={closeTelegram}>&times;</button>
@@ -439,7 +440,7 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
       )}
 
       {/* Complete daily tasks popup */}
-      {popup === "task" && (
+      {popup === "task" && !allDone && (
         <div className="inc-pop">
           <div className="inc-pop-card">
             <button className="inc-pop-close" type="button" aria-label="Close" onClick={closeTask}>&times;</button>

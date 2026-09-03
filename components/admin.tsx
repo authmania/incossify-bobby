@@ -2,25 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  adminLoginAction, adminLogoutAction, adminSaveConfigAction,
-  adminActivateUserAction, adminWithdrawalAction,
-} from "@/lib/admin-actions";
+import { adminLoginAction, adminLogoutAction, adminSaveConfigAction } from "@/lib/admin-actions";
 
 type ConfigDraft = {
   bankName: string; accountName: string; accountNumber: string;
   paymentLink1: string; paymentLink2: string;
   usePaymentLink: boolean;
   telegramLink: string; whatsappLink: string; socialLink: "tg" | "wa";
-};
-type UserRow = {
-  uid: string; fullName: string; username: string; email: string; pkg: string;
-  packageName: string; activated: boolean; total: number; phone: string;
-  paymentReference: string; joined: string | null;
-};
-type WdRow = {
-  id: string; uid: string; amount: number; bankName: string; accountName: string;
-  accountNumber: string; status: string; date: string | null;
 };
 
 function toast(msg: string) {
@@ -31,8 +19,6 @@ function toast(msg: string) {
   requestAnimationFrame(() => el.classList.add("show"));
   setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 320); }, 2400);
 }
-const fmtN = (n: number) => "₦" + Number(n || 0).toLocaleString();
-const dateTxt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 const Ico = ({ d, extra }: { d: string; extra?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} />{extra && <path d={extra} />}</svg>
 );
@@ -87,15 +73,12 @@ function LinkField({ label, current, value, onChange, placeholder }: { label: st
 }
 
 // ── Princess-style admin panel ──
-export function AdminDashboard({ config, users, withdrawals }: { config: ConfigDraft; users: UserRow[]; withdrawals: WdRow[] }) {
+export function AdminDashboard({ config }: { config: ConfigDraft }) {
   const router = useRouter();
   const [f, setF] = useState<ConfigDraft>(config);
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(f) !== JSON.stringify(config);
   const up = <K extends keyof ConfigDraft>(k: K, v: ConfigDraft[K]) => setF((p) => ({ ...p, [k]: v }));
-
-  const pending = users.filter((u) => u.pkg !== "free" && !u.activated);
-  const pendingWd = withdrawals.filter((w) => w.status === "Pending");
 
   const saveAll = async () => {
     setSaving(true);
@@ -103,10 +86,6 @@ export function AdminDashboard({ config, users, withdrawals }: { config: ConfigD
     setSaving(false);
     if (r.error) { toast("❌ " + r.error); return; }
     toast("✅ Settings saved!");
-  };
-  const run = async (fn: () => Promise<{ error?: string }>) => {
-    const r = await fn();
-    if (r.error) toast("❌ " + r.error); else router.refresh();
   };
 
   const hdIc = {
@@ -181,47 +160,6 @@ export function AdminDashboard({ config, users, withdrawals }: { config: ConfigD
             <LinkField label="Current link" current={f.whatsappLink} value={f.whatsappLink} onChange={(v) => up("whatsappLink", v)} placeholder="https://wa.me/2348012345678" />
           </Card>
 
-          {/* Activations (extra) */}
-          <Card icon={hdIc.people} title={`User Activations${pending.length ? ` (${pending.length})` : ""}`}>
-            {pending.length === 0 ? (
-              <p style={{ fontSize: "0.85rem", opacity: 0.6 }}>No pending activations. 🎉</p>
-            ) : (
-              <div style={{ display: "grid", gap: "0.6rem" }}>
-                {pending.map((u) => (
-                  <div key={u.uid} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgb(255 255 255 / 0.03)", border: "1px solid var(--border)", borderRadius: 14, padding: "0.75rem 1rem" }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                      <b style={{ fontSize: "0.9rem" }}>{u.fullName}</b>
-                      <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>@{u.username} · {u.email}</div>
-                      <div style={{ fontSize: "0.72rem", opacity: 0.5, marginTop: 2 }}>{u.paymentReference}</div>
-                    </div>
-                    <span className="badge-pill dim">{u.packageName}</span>
-                    <button className="btn btn-aqua btn-sm" onClick={() => run(() => adminActivateUserAction(u.uid))}>Activate</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Withdrawals (extra) */}
-          <Card icon={hdIc.bank} title={`Withdrawal Requests${pendingWd.length ? ` (${pendingWd.length})` : ""}`}>
-            {pendingWd.length === 0 ? (
-              <p style={{ fontSize: "0.85rem", opacity: 0.6 }}>No pending withdrawal requests.</p>
-            ) : (
-              <div style={{ display: "grid", gap: "0.6rem" }}>
-                {pendingWd.map((w) => (
-                  <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgb(255 255 255 / 0.03)", border: "1px solid var(--border)", borderRadius: 14, padding: "0.75rem 1rem" }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                      <b style={{ fontSize: "0.9rem" }}>{fmtN(w.amount)}</b>
-                      <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>{w.bankName} · {w.accountName} · {w.accountNumber}</div>
-                      <div style={{ fontSize: "0.72rem", opacity: 0.5, marginTop: 2 }}>{dateTxt(w.date)}</div>
-                    </div>
-                    <button className="btn btn-aqua btn-sm" onClick={() => run(() => adminWithdrawalAction(w.id, "approve"))}>Mark paid</button>
-                    <button className="btn btn-sm" style={{ border: "1px solid color-mix(in oklab, oklch(65% 0.22 25) 60%, transparent)", color: "oklch(80% 0.16 25)" }} onClick={() => run(() => adminWithdrawalAction(w.id, "reject"))}>Reject</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
         </div>
 
         <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
