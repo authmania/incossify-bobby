@@ -3,7 +3,8 @@
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { db } from "./firebase-admin";
+import { db } from "./firebase";
+import { doc, updateDoc, deleteDoc, setDoc, getDoc } from "firebase/firestore";
 import { saveConfig } from "./config";
 import { getUserByUid } from "./auth";
 import {
@@ -62,26 +63,25 @@ export async function adminActivateUserAction(uid: string): Promise<{ error?: st
     "wallets.total": (Number(user.wallets.total) || 0) + (already ? 0 : bonus),
   };
   if (!already) update.paymentReportedAt = new Date();
-  await db.doc(`users/${uid}`).update(update);
+  await updateDoc(doc(db, "users", uid), update);
   return {};
 }
 
 export async function adminWithdrawalAction(id: string, action: "approve" | "reject"): Promise<{ error?: string }> {
-  const ref = db.doc(`withdrawals/${id}`);
-  const snap = await ref.get();
-  if (!snap.exists) return { error: "Not found." };
-  const d = snap.data()!;
+  const ref = doc(db, "withdrawals", id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return { error: "Not found." };
+  const d = snap.data();
 
   if (action === "reject") {
-    // refund the amount back to the user's balance
-    const userRef = db.doc(`users/${d.uid}`);
-    const userSnap = await userRef.get();
-    const curTotal = userSnap.exists ? Number(userSnap.data()?.wallets?.total || 0) : 0;
-    await userRef.update({ "wallets.total": curTotal + Number(d.amount || 0) });
-    await ref.update({ status: "Rejected", note: "Rejected by admin" });
+    const userRef = doc(db, "users", d.uid);
+    const userSnap = await getDoc(userRef);
+    const curTotal = userSnap.exists() ? Number(userSnap.data()?.wallets?.total || 0) : 0;
+    await updateDoc(userRef, { "wallets.total": curTotal + Number(d.amount || 0) });
+    await updateDoc(ref, { status: "Rejected", note: "Rejected by admin" });
     return {};
   }
 
-  await ref.update({ status: "Approved", note: "Paid out by admin" });
+  await updateDoc(ref, { status: "Approved", note: "Paid out by admin" });
   return {};
 }

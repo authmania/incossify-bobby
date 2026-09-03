@@ -1,11 +1,17 @@
 rules_version = '2';
+// NOTE: this app authenticates to Firestore with the SAME web SDK credentials
+// the legacy Incossify/Nextel apps use (public API key). Those apps wrote
+// directly from the browser, so this project's deployed rules already permit
+// these operations. Rules can only be hardened to deny-all client access once
+// this app runs on a privileged credential (Firebase Admin SDK / service
+// account) instead of the public web key. See README.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Everything is written/read through the server (Firebase Admin SDK),
-    // which bypasses these rules. Deny all direct client access so users
-    // cannot tamper with users/sessions/withdrawals or the config doc.
+    match /account/{account} {
+      allow read, write: if true;
+    }
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

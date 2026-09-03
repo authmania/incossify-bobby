@@ -1,5 +1,6 @@
-import type { Package, PackageId, SiteConfig } from "./types";
-import { db } from "./firebase-admin";
+import type { Package, SiteConfig } from "./types";
+import { db } from "./firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export const SITE_NAME = "Incossify";
 export const CONFIG_DOC_PATH = "account/incossifybobby";
@@ -68,8 +69,8 @@ const CONFIG_DEFAULTS: SiteConfig = {
 /** Merge the live Firestore config over the defaults. Never throws. */
 export async function loadConfig(): Promise<SiteConfig> {
   try {
-    const snap = await db.doc(CONFIG_DOC_PATH).get();
-    const d = (snap.exists ? snap.data()! : {}) as Record<string, unknown>;
+    const snap = await getDoc(doc(db, CONFIG_DOC_PATH));
+    const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
     const merged: SiteConfig = { ...CONFIG_DEFAULTS };
     const KEYS: (keyof SiteConfig)[] = [
       "bankName",
@@ -84,7 +85,7 @@ export async function loadConfig(): Promise<SiteConfig> {
       "supportTelegram",
     ];
     for (const k of KEYS) {
-      const v = d[k];
+      const v = data[k];
       if (v !== undefined) (merged as unknown as Record<string, unknown>)[k] = v;
     }
     return merged;
@@ -96,7 +97,7 @@ export async function loadConfig(): Promise<SiteConfig> {
 
 /** Server-only write used by the admin panel. */
 export async function saveConfig(patch: Partial<SiteConfig>) {
-  await db.doc(CONFIG_DOC_PATH).set(patch, { merge: true });
+  await setDoc(doc(db, CONFIG_DOC_PATH), patch, { merge: true });
 }
 
 // Money / display helpers (NGN is the single source of truth)

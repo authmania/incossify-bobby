@@ -1,8 +1,11 @@
 // Server-only admin helpers.
 import { cookies } from "next/headers";
-import { db } from "./firebase-admin";
+import { db } from "./firebase";
+import {
+  collection, getDocs, query, orderBy, limit, doc, getDoc, setDoc, deleteDoc,
+} from "firebase/firestore";
 import type { User, Withdrawal } from "./types";
-import type { DocumentData } from "firebase-admin/firestore";
+import { toDate } from "./auth";
 
 export const ADMIN_COOKIE = "incossify_admin";
 
@@ -15,11 +18,11 @@ export async function adminAuthed(): Promise<boolean> {
     const store = await cookies();
     const token = store.get(ADMIN_COOKIE)?.value;
     if (!token) return false;
-    const snap = await db.doc(`admin_sessions/${token}`).get();
-    if (!snap.exists) return false;
-    const d = snap.data()!;
-    if (d.expiresAt && toMs(d.expiresAt) < Date.now()) {
-      await snap.ref.delete();
+    const snap = await getDoc(doc(db, "admin_sessions", token));
+    if (!snap.exists()) return false;
+    const d = snap.data();
+    if (d.expiresAt && toDate(d.expiresAt).getTime() < Date.now()) {
+      await deleteDoc(snap.ref);
       return false;
     }
     return true;
@@ -29,7 +32,7 @@ export async function adminAuthed(): Promise<boolean> {
 }
 
 export async function createAdminSession(token: string): Promise<void> {
-  await db.doc(`admin_sessions/${token}`).set({
+  await setDoc(doc(db, "admin_sessions", token), {
     createdAt: new Date(),
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 12),
   });
@@ -37,25 +40,17 @@ export async function createAdminSession(token: string): Promise<void> {
 
 export async function destroyAdminSession(token: string): Promise<void> {
   try {
-    await db.doc(`admin_sessions/${token}`).delete();
+    await deleteDoc(doc(db, "admin_sessions", token));
   } catch {
     /* noop */
   }
 }
 
-function toMs(v: unknown): number {
-  const o = v as { toMillis?: () => number } | Date | string | number;
-  if (o && typeof (o as { toMillis?: () => number }).toMillis === "function") return (o as { toMillis: () => number }).toMillis();
-  if (o instanceof Date) return o.getTime();
-  if (typeof o === "number") return o;
-  return new Date(o as Date | string).getTime();
-}
-
 export async function listUsers(limitN = 300): Promise<User[]> {
-  const snap = await db.collection("users").orderBy("joinedAt", "desc").limit(limitN).get();
+  const snap = await getDocs(query(collection(db, "users"), orderBy("joinedAt", "desc"), limit(limitN)));
   const out: User[] = [];
   snap.forEach((d) => {
-    const raw = d.data()!;
+    const raw = d.data();
     out.push({
       uid: raw.uid || d.id,
       fullName: raw.fullName || "",
@@ -66,14 +61,14 @@ export async function listUsers(limitN = 300): Promise<User[]> {
       passwordHash: "",
       pkg: raw.pkg || "free",
       packageName: raw.packageName || "Free",
-      activatedAt: raw.activatedAt ? new Date(toMs(raw.activatedAt)) : null,
+      activatedAt: raw.activatedAt ? toDate(raw.activatedAt) : null,
       paymentReference: raw.paymentReference || "",
       referralCode: raw.referralCode || "",
       referredBy: raw.referredBy || null,
       wallets: raw.wallets || {},
       referrals: raw.referrals || 0,
       bank: raw.bank || { bankName: "", accountName: "", accountNumber: "" },
-      joinedAt: new Date(toMs(raw.joinedAt)),
+      joinedAt: toDate(raw.joinedAt),
       ledger: raw.ledger || {},
     });
   });
@@ -81,10 +76,10 @@ export async function listUsers(limitN = 300): Promise<User[]> {
 }
 
 export async function listWithdrawals(limitN = 200): Promise<Withdrawal[]> {
-  const snap = await db.collection("withdrawals").orderBy("date", "desc").limit(limitN).get();
+  const snap = await getDocs(query(collection(db, "withdrawals"), orderBy("date", "desc"), limit(limitN)));
   const out: Withdrawal[] = [];
   snap.forEach((d) => {
-    const r = d.data()!;
+    const r = d.data();
     out.push({
       id: r.id || d.id,
       uid: r.uid || "",
@@ -93,7 +88,7 @@ export async function listWithdrawals(limitN = 200): Promise<Withdrawal[]> {
       accountName: r.accountName || "",
       accountNumber: r.accountNumber || "",
       status: r.status || "Pending",
-      date: new Date(toMs(r.date)),
+      date: toDate(r.date),
       note: r.note || "",
     });
   });

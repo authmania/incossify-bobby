@@ -1,4 +1,5 @@
-import { db } from "./firebase-admin";
+import { db } from "./firebase";
+import { doc, getDoc, runTransaction } from "firebase/firestore";
 import { getUserByUid } from "./auth";
 import type { User } from "./types";
 import { TASK_CATALOG, SHARE_CLAIMS, SONG_REWARD, musicSongIds } from "./catalog";
@@ -44,10 +45,10 @@ export async function creditWithLedger(
   newState: string,
   expectState: string | null
 ): Promise<User> {
-  const ref = db.doc(`users/${uid}`);
-  return db.runTransaction(async (tx) => {
+  const ref = doc(db, "users", uid);
+  return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists) throw new Error("Account not found.");
+    if (!snap.exists()) throw new Error("Account not found.");
     const data = snap.data()!;
     const wallets: LedgerWallets = { ...ZERO, ...(data.wallets || {}) };
     const ledger: Ledger = data.ledger || {};

@@ -2,7 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { db } from "./firebase-admin";
+import { db } from "./firebase";
+import {
+  collection, doc, setDoc, updateDoc, getDocs, query, where, limit, runTransaction,
+} from "firebase/firestore";
 import {
   getUserByUid, getUserByEmailOrUsername, hashPassword, verifyPassword,
   createSession, destroySession, clearSessionCookie, setSessionCookie,
@@ -31,12 +34,12 @@ export async function registerAction(_prev: unknown, formData: FormData): Promis
   if (password.length < 4) return { error: "Password must be at least 4 characters." };
   if (phone.replace(/\D/g, "").length < 10) return { error: "Enter a valid phone number." };
 
-  const existing = await db.collection("users").where("email", "==", email).limit(1).get();
+  const existing = await getDocs(query(collection(db, "users"), where("email", "==", email), limit(1)));
   if (!existing.empty) return { error: "An account with this email already exists." };
-  const uname = await db.collection("users").where("usernameLower", "==", username.toLowerCase()).limit(1).get();
+  const uname = await getDocs(query(collection(db, "users"), where("usernameLower", "==", username.toLowerCase()), limit(1)));
   if (!uname.empty) return { error: "This username is already taken." };
 
-  const uid = db.collection("users").doc().id;
+  const uid = doc(collection(db, "users")).id;
   const user: User = {
     uid,
     fullName,
@@ -58,7 +61,7 @@ export async function registerAction(_prev: unknown, formData: FormData): Promis
     joinedAt: new Date(),
     ledger: {},
   };
-  await db.doc(`users/${uid}`).set({ ...user, usernameLower: username.toLowerCase() });
+  await setDoc(doc(db, "users", uid), { ...user, usernameLower: username.toLowerCase() });
 
   const token = await createSession(uid);
   await setSessionCookie(token);
@@ -96,7 +99,7 @@ export async function saveBankAction(userUid: string, formData: FormData): Promi
   const accountNumber = String(formData.get("accountNumber") || "").replace(/\D/g, "").slice(0, 11);
   if (!bankName || !accountName || accountNumber.length < 10)
     return { error: "Fill in all bank details (account number: 10–11 digits)." };
-  await db.doc(`users/${userUid}`).update({ bank: { bankName, accountName, accountNumber } });
+  await updateDoc(doc(db, "users", userUid), { bank: { bankName, accountName, accountNumber } });
   return { ok: true };
 }
 
@@ -106,7 +109,7 @@ export async function choosePackageAction(userUid: string, pkgId: string): Promi
   const pkg = PACKAGES[pkgId as "starterkit" | "apex"];
   if (!pkg) return { error: "Unknown package." };
 
-  await db.doc(`users/${userUid}`).update({ pkg: pkg.id, packageName: pkg.name });
+  await updateDoc(doc(db, "users", userUid), { pkg: pkg.id, packageName: pkg.name });
 
   const config = await loadConfig();
   if (config.usePaymentLink) {
@@ -118,7 +121,7 @@ export async function choosePackageAction(userUid: string, pkgId: string): Promi
 
 /** Marks that a user reported paying (proof sent via social) — admin activates. */
 export async function reportPaidAction(userUid: string): Promise<{ error?: string }> {
-  await db.doc(`users/${userUid}`).set({ paymentReportedAt: new Date() }, { merge: true });
+  await setDoc(doc(db, "users", userUid), { paymentReportedAt: new Date() }, { merge: true });
   return {};
 }
 
@@ -184,15 +187,15 @@ export async function requestWithdrawalAction(uid: string, formData: FormData): 
     date: new Date(),
   };
 
-  await db.runTransaction(async (tx) => {
-    const ref = db.doc(`users/${uid}`);
+  await runTransaction(db, async (tx) => {
+    const ref = doc(db, "users", uid);
     const snap = await tx.get(ref);
-    if (!snap.exists) return;
+    if (!snap.exists()) return;
     const wallets = snap.data()!.wallets || {};
     const cur = Number(wallets.total) || 0;
     if (cur < amount) throw new Error("Insufficient balance.");
     tx.update(ref, { "wallets.total": cur - amount });
-    tx.set(db.doc(`withdrawals/${w.id}`), { ...w, uid, date: new Date() });
+    tx.set(doc(db, "withdrawals", w.id), { ...w, date: new Date() });
   });
 
   redirect("/withdraw/receipt");
