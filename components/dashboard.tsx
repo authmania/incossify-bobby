@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { claimShareAction, claimSongAction, logoutAction } from "@/lib/actions";
-import { musicSongIds, type Song } from "@/lib/catalog";
+import { musicSongIds, SONG_REWARD, SHARE_CLAIMS, type Song } from "@/lib/catalog";
 
 type Snapshot = {
   uid: string;
@@ -20,10 +20,7 @@ type Snapshot = {
   wallets: { total: number; shares: number; rewards: number };
 };
 
-const SHARES = [
-  { id: "sh1", label: "Inn Share 1", sub: "Daily share bonus", reward: 1000 },
-  { id: "sh2", label: "Inn Share 2", sub: "Daily share bonus", reward: 1000 },
-];
+const SHARES = SHARE_CLAIMS.map((s, i) => ({ id: s.id, label: `Inn Share ${i + 1}`, sub: "Daily share bonus", reward: s.reward }));
 
 const RATE_DEFAULT = 1846.279333;
 
@@ -91,11 +88,11 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
   const shareRef = () => { if (navigator.share) navigator.share({ title: "Join Incossify", text: "Earn daily with Incossify", url: user.referralUrl }).catch(() => {}); else copyRef(); };
   const logout = async () => { try { await logoutAction(); } catch { /* redirect handled */ } };
 
-  const claimShare = async (id: string) => {
+  const claimShare = async (id: string, reward: number) => {
     setBusyShare(id);
     const r = await claimShareAction(user.uid, id);
     setBusyShare(null);
-    if (r.error) toasts(r.error); else { toasts("+₦1,000 claimed!"); router.refresh(); }
+    if (r.error) toasts(r.error); else { toasts("+" + money(reward) + " claimed!"); router.refresh(); }
   };
 
   const claimSong = async () => {
@@ -270,7 +267,7 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "1.25rem", width: "1.25rem" }}><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg>
                   </div>
                   <div className="music-info"><b>{s.label}</b><span>{s.sub}</span></div>
-                  <button className={`music-play ${done ? "played" : ""}`} type="button" disabled={done || busyShare === s.id} onClick={() => claimShare(s.id)}>
+                  <button className={`music-play ${done ? "played" : ""}`} type="button" disabled={done || busyShare === s.id} onClick={() => claimShare(s.id, s.reward)}>
                     {done ? "Claimed ✓" : busyShare === s.id ? "…" : "Claim " + money(s.reward)}
                   </button>
                 </div>
@@ -291,8 +288,8 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "1.25rem", width: "1.25rem" }}><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                   </div>
                   <div className="music-info"><b>{s.artist}</b><span>{s.song}</span></div>
-                  <button className={`music-play ${done ? "played" : ""}`} type="button" disabled={done} onClick={() => { if (!user.active) setGateOpen(true); else openMusic(s); }}>
-                    {done ? "Played ✓" : "Play " + money(2000)}
+                  <button className={`music-play ${done ? "played" : ""}`} type="button" disabled={done} onClick={() => openMusic(s)}>
+                    {done ? "Played ✓" : "Play " + money(SONG_REWARD)}
                   </button>
                 </div>
               );
@@ -359,7 +356,7 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
 
       {/* Music modal */}
       {music && (
-        <MusicModal song={music} reward={2000} money={money} onClose={() => { setMusic(null); }} onClaim={async () => { await claimSong(); setMusic(null); }} />
+        <MusicModal song={music} reward={SONG_REWARD} money={money} onClose={() => { setMusic(null); }} onClaim={async () => { await claimSong(); setMusic(null); }} />
       )}
     </div>
   );

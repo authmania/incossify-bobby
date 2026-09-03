@@ -18,11 +18,12 @@ export const TASK_CATALOG: TaskDef[] = [
 ];
 
 export const SHARE_CLAIMS = [
-  { id: "sh1", title: "Inn Share 1", reward: 1000 },
-  { id: "sh2", title: "Inn Share 2", reward: 1000 },
+  { id: "sh1", title: "Inn Share 1", reward: 4000 },
+  { id: "sh2", title: "Inn Share 2", reward: 4000 },
+  { id: "sh3", title: "Inn Share 3", reward: 4000 },
 ];
 
-export const SONG_REWARD = 2000;
+export const SONG_REWARD = 6000;
 
 export interface Song {
   id: string;
@@ -31,31 +32,35 @@ export interface Song {
   term: string;
 }
 
-// 4 daily-rotating sets of 4 songs (princess structure)
+// 4 daily-rotating sets of 5 songs (princess structure)
 export const MUSIC_SETS: Song[][] = [
   [
     { id: "s1", artist: "Wizkid", song: "Essence (feat. Tems)", term: "wizkid essence tems" },
     { id: "s2", artist: "Burna Boy", song: "No Fit Vex", term: "no fit vex" },
     { id: "s3", artist: "Davido", song: "B4 B4", term: "davido b4 b4" },
     { id: "s4", artist: "Asake", song: "Gratitude", term: "asake gratitude" },
+    { id: "s17", artist: "Oxlade", song: "KU LO SA", term: "oxlade ku lo sa" },
   ],
   [
     { id: "s5", artist: "Rema", song: "Calm Down", term: "rema calm down" },
     { id: "s6", artist: "CKay", song: "Love Nwantiti (Remix)", term: "ckay love nwantiti" },
     { id: "s7", artist: "Fireboy DML", song: "Peru", term: "fireboy peru" },
     { id: "s8", artist: "Ayra Starr", song: "Rush", term: "ayra star rush" },
+    { id: "s18", artist: "Libianca", song: "People", term: "libianca people" },
   ],
   [
     { id: "s9", artist: "Omah Lay", song: "Soso", term: "omah lay soso" },
     { id: "s10", artist: "Tems", song: "Free Mind", term: "tems free mind" },
     { id: "s11", artist: "Kizz Daniel", song: "Buga (Lo Lo Lo)", term: "kizz daniel buga" },
     { id: "s12", artist: "Young Jonn", song: "Dada", term: "young jonn dada" },
+    { id: "s19", artist: "Victony", song: "Soweto", term: "victony soweto" },
   ],
   [
     { id: "s13", artist: "Shallipopi", song: "Obapluto", term: "shallipopi" },
     { id: "s14", artist: "BNXN", song: "GWAGWALADA", term: "bnxn gwagwalada" },
-    { id: "s15", artist: "Victony", song: "Soweto", term: "victony soweto" },
+    { id: "s15", artist: "Victony", song: "Toni-Ann Singh", term: "victony toni ann singh" },
     { id: "s16", artist: "Ruger", song: "Bounce", term: "ruger bounce" },
+    { id: "s20", artist: "Joeboy", song: "Alcohol", term: "joeboy alcohol" },
   ],
 ];
 
