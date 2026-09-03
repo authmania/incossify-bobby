@@ -1,28 +1,41 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { BASE_URL } from "@/lib/config";
+import { todayKey } from "@/lib/data";
 import { DashboardClient } from "@/components/dashboard";
 
 export default async function DashboardPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const snapshot = {
-    uid: user.uid,
-    fullName: user.fullName,
-    firstName: user.fullName.split(" ")[0] || "Friend",
-    username: user.username,
-    referralCode: user.referralCode,
-    pkg: user.pkg,
-    packageName: user.packageName,
-    active: !!user.activatedAt,
-    wallets: {
-      total: user.wallets?.total || 0,
-      shares: user.wallets?.shares || 0,
-      rewards: user.wallets?.rewards || 0,
-      task: user.wallets?.task || 0,
-    },
-    bankSaved: !!(user.bank?.accountName),
-  };
+  const day = todayKey();
+  const ledger = user.ledger?.[day] || {};
 
-  return <DashboardClient user={snapshot} />;
+  const initials = user.fullName
+    .trim().split(/\s+/).filter(Boolean)
+    .map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+
+  return (
+    <DashboardClient
+      user={{
+        uid: user.uid,
+        fullName: user.fullName,
+        firstName: user.fullName.trim().split(/\s+/)[0] || "Member",
+        initials,
+        username: user.username,
+        referralCode: user.referralCode,
+        referralUrl: `${BASE_URL}/register?ref=${user.referralCode}`,
+        pkg: user.pkg,
+        packageName: user.packageName,
+        active: !!user.activatedAt,
+        wallets: {
+          total: user.wallets?.total || 0,
+          shares: user.wallets?.shares || 0,
+          rewards: user.wallets?.rewards || 0,
+        },
+      }}
+      day={day}
+      ledger={ledger}
+    />
+  );
 }

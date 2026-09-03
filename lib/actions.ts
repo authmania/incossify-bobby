@@ -139,10 +139,10 @@ export async function claimSongAction(uid: string): Promise<{ error?: string; re
   const songs = musicSongIds(day);
   const user = await getUserByUid(uid);
   if (!user) return { error: "Account not found." };
-  const done = songs.filter((s) => (user.ledger?.[day]?.[s] || "available") === "completed").length;
+  const done = songs.filter((s) => (user.ledger?.[day]?.[s.id] || "available") === "completed").length;
   if (done >= songs.length) return { error: "All songs done for today." };
   const next = songs[done];
-  await creditWithLedger(uid, "rewards", SONG_REWARD, day, next, "completed", "available");
+  await creditWithLedger(uid, "rewards", SONG_REWARD, day, next.id, "completed", "available");
   return { reward: SONG_REWARD };
 }
 
