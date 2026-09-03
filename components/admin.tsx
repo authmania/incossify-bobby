@@ -33,8 +33,8 @@ function toast(msg: string) {
 }
 const fmtN = (n: number) => "₦" + Number(n || 0).toLocaleString();
 const dateTxt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
-const Ico = ({ d }: { d: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+const Ico = ({ d, extra }: { d: string; extra?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} />{extra && <path d={extra} />}</svg>
 );
 
 // ── Admin password card (route: /admin/login) ──
@@ -67,196 +67,170 @@ export function AdminPasswordCard() {
   );
 }
 
-// ── Config editor ──
-function ConfigCard({ config }: { config: ConfigDraft }) {
-  const [f, setF] = useState<ConfigDraft>(config);
-  const [status, setStatus] = useState<string>("");
-  const dirty = JSON.stringify(f) !== JSON.stringify(config);
-  const up = <K extends keyof ConfigDraft>(k: K, v: ConfigDraft[K]) => { setF((p) => ({ ...p, [k]: v })); setStatus(""); };
-
-  const save = async () => {
-    const r = await adminSaveConfigAction(f);
-    if (r.error) { setStatus("❌ " + r.error); return; }
-    setStatus("✅ Config saved!");
-    toast("✅ Config saved!");
-  };
-  const label = (t: string) => <span className="current-label">{t}</span>;
-  const current = (v: string) => <div className="current-value">{v || "Not set"}</div>;
-
+function Card({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <>
-      <div className="admin-card glass-strong">
-        <div className="hd"><div className="ic"><Ico d="M3 9 12 2l9 7v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></div><h2>Payment Account Details</h2></div>
-        <div style={{ display: "grid", gap: "0.875rem" }}>
-          <label className="block"><span className="field-label">Bank Name</span><input className="field" value={f.bankName} onChange={(e) => up("bankName", e.target.value)} placeholder="e.g. Opay" /></label>
-          <label className="block"><span className="field-label">Account Name</span><input className="field" value={f.accountName} onChange={(e) => up("accountName", e.target.value)} placeholder="e.g. INCOSSIFY LTD" /></label>
-          <label className="block"><span className="field-label">Account Number</span><input className="field" value={f.accountNumber} onChange={(e) => up("accountNumber", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="e.g. 0123456789" /></label>
-        </div>
-      </div>
-
-      <div className="admin-card glass-strong">
-        <div className="hd"><div className="ic"><Ico d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /></div><h2>Payment Link Settings</h2></div>
-        <div className="toggle-row">
-          <div className="toggle-label">Enable Payment Links <small>(Use payment links instead of bank transfer)</small></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto" }}>
-            <span className={`toggle-status ${f.usePaymentLink ? "active" : "inactive"}`}>{f.usePaymentLink ? "ON" : "OFF"}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={f.usePaymentLink} onChange={(e) => up("usePaymentLink", e.target.checked)} /><span className="toggle-slider"></span></label>
-          </div>
-        </div>
-        <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
-        <label className="block">
-          {label("StarterKit Payment Link (₦9,500)")}
-          {current(f.paymentLink1)}
-          <input type="url" className="field" style={{ marginTop: "0.5rem" }} value={f.paymentLink1} onChange={(e) => up("paymentLink1", e.target.value)} placeholder="https://pay.example/incossifykit" />
-        </label>
-        <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
-        <label className="block">
-          {label("Apex Payment Link (₦15,000)")}
-          {current(f.paymentLink2)}
-          <input type="url" className="field" style={{ marginTop: "0.5rem" }} value={f.paymentLink2} onChange={(e) => up("paymentLink2", e.target.value)} placeholder="https://pay.example/incossifyape" />
-        </label>
-      </div>
-
-      <div className="admin-card glass-strong">
-        <div className="hd"><div className="ic"><Ico d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /></div><h2>Social Settings</h2></div>
-        <span className="field-label" style={{ display: "block", marginBottom: "0.75rem" }}>Use Social</span>
-        <div className="social-pick">
-          <button type="button" className={`social-opt ${f.socialLink === "tg" ? "active" : ""}`} onClick={() => { up("socialLink", "tg"); }}>Telegram</button>
-          <button type="button" className={`social-opt ${f.socialLink === "wa" ? "active" : ""}`} onClick={() => { up("socialLink", "wa"); }}>WhatsApp</button>
-        </div>
-      </div>
-
-      <div className="admin-card glass-strong">
-        <div className="hd"><div className="ic"><Ico d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /></div><h2>Telegram Redirect Link</h2></div>
-        {label("Current link")}
-        {current(f.telegramLink)}
-        <input type="url" className="field" style={{ marginTop: "0.5rem" }} value={f.telegramLink} onChange={(e) => up("telegramLink", e.target.value)} placeholder="https://t.me/your_channel_or_group" />
-      </div>
-
-      <div className="admin-card glass-strong">
-        <div className="hd"><div className="ic"><Ico d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059" /></div><h2>WhatsApp Redirect Link</h2></div>
-        {label("Current link")}
-        {current(f.whatsappLink)}
-        <input type="url" className="field" style={{ marginTop: "0.5rem" }} value={f.whatsappLink} onChange={(e) => up("whatsappLink", e.target.value)} placeholder="https://wa.me/2348012345678" />
-      </div>
-
-      <button className="btn btn-aqua btn-block" style={{ padding: "0.9rem" }} disabled={!dirty} onClick={save}>Save Changes</button>
-      <div className="link-status" style={{ textAlign: "center" }}>{status}</div>
-    </>
+    <div className="admin-card glass-strong">
+      <div className="hd"><div className="ic">{icon}</div><h2>{title}</h2></div>
+      {children}
+    </div>
   );
 }
 
-// ── Main dashboard ──
+function LinkField({ label, current, value, onChange, placeholder }: { label: string; current: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <label className="block">
+      <span className="current-label">{label}</span>
+      <div className="current-value">{current || "Not set"}</div>
+      <input type="url" className="field" style={{ marginTop: "0.5rem" }} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </label>
+  );
+}
+
+// ── Princess-style admin panel ──
 export function AdminDashboard({ config, users, withdrawals }: { config: ConfigDraft; users: UserRow[]; withdrawals: WdRow[] }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"activations" | "users" | "withdrawals" | "config">("activations");
+  const [f, setF] = useState<ConfigDraft>(config);
+  const [saving, setSaving] = useState(false);
+  const dirty = JSON.stringify(f) !== JSON.stringify(config);
+  const up = <K extends keyof ConfigDraft>(k: K, v: ConfigDraft[K]) => setF((p) => ({ ...p, [k]: v }));
+
   const pending = users.filter((u) => u.pkg !== "free" && !u.activated);
   const pendingWd = withdrawals.filter((w) => w.status === "Pending");
+
+  const saveAll = async () => {
+    setSaving(true);
+    const r = await adminSaveConfigAction(f);
+    setSaving(false);
+    if (r.error) { toast("❌ " + r.error); return; }
+    toast("✅ Settings saved!");
+  };
   const run = async (fn: () => Promise<{ error?: string }>) => {
     const r = await fn();
-    if (r.error) toast("❌ " + r.error);
-    else router.refresh();
+    if (r.error) toast("❌ " + r.error); else router.refresh();
   };
 
-  const tabs: { id: typeof tab; label: string; badge?: number }[] = [
-    { id: "activations", label: "Activations", badge: pending.length },
-    { id: "users", label: `All users (${users.length})` },
-    { id: "withdrawals", label: "Withdrawals", badge: pendingWd.length },
-    { id: "config", label: "Config" },
-  ];
-
-  const pill = (ok: boolean) => (ok ? "badge-pill ok" : "badge-pill bad");
+  const hdIc = {
+    bank: <Ico d="M3 9 12 2l9 7v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" extra="M9 22V12h6v10" />,
+    link: <Ico d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" extra="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />,
+    people: <Ico d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" extra="" />,
+    whatsapp: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.668-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" /></svg>,
+  };
 
   return (
     <div className="admin-shell">
       <div className="grad"></div>
       <div className="inner">
         <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
-          <div className="brand">
+          <div className="brand" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-CUooZ1Ch.png" alt="Incossify" />
+            <img src="/logo-CUooZ1Ch.png" alt="Incossify" style={{ height: "2rem", width: "2rem", objectFit: "contain" }} />
             <span style={{ fontWeight: 800, fontSize: "1.1rem" }}>Incossify <span style={{ color: "var(--primary)" }}>Admin</span></span>
           </div>
-          <button className="signout" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.7, border: "1px solid var(--border)", borderRadius: 999, padding: "0.55rem 1.4rem", background: "rgb(255 255 255 / 0.04)", cursor: "pointer", fontFamily: "inherit" }}
+          <button className="btn btn-aqua" type="button" style={{ marginLeft: "auto", display: dirty ? "inline-flex" : "none", padding: "0.5rem 1.1rem", fontSize: "0.8rem" }} disabled={saving} onClick={saveAll}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "0.875rem", width: "0.875rem" }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+          <button className="signout" style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.7, border: "1px solid var(--border)", borderRadius: 999, padding: "0.55rem 1.4rem", background: "rgb(255 255 255 / 0.04)", cursor: "pointer", fontFamily: "inherit" }}
             onClick={async () => { await adminLogoutAction(); router.push("/admin/login"); }}>
             Logout
           </button>
         </header>
 
-        <div className="admin-tabs">
-          {tabs.map((t) => (
-            <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-              {t.label}{t.badge ? ` (${t.badge})` : ""}
-            </button>
-          ))}
+        <div style={{ marginTop: "1.5rem", display: "grid", gap: "1.25rem" }}>
+          {/* Payment Account */}
+          <Card icon={hdIc.bank} title="Payment Account Details">
+            <div style={{ display: "grid", gap: "0.875rem" }}>
+              <label className="block"><span className="field-label">Bank Name</span><input type="text" className="field" value={f.bankName} onChange={(e) => up("bankName", e.target.value)} placeholder="e.g. Opay" /></label>
+              <label className="block"><span className="field-label">Account Name</span><input type="text" className="field" value={f.accountName} onChange={(e) => up("accountName", e.target.value)} placeholder="e.g. INCOSSIFY LTD" /></label>
+              <label className="block"><span className="field-label">Account Number</span><input type="text" className="field" value={f.accountNumber} onChange={(e) => up("accountNumber", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="e.g. 0123456789" /></label>
+            </div>
+          </Card>
+
+          {/* Payment Links */}
+          <Card icon={hdIc.link} title="Payment Link Settings">
+            <div className="toggle-row">
+              <div className="toggle-label">Enable Payment Links <small>(Use payment links instead of bank transfer)</small></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto" }}>
+                <span className={`toggle-status ${f.usePaymentLink ? "active" : "inactive"}`}>{f.usePaymentLink ? "ON" : "OFF"}</span>
+                <label className="toggle-switch"><input type="checkbox" checked={f.usePaymentLink} onChange={(e) => up("usePaymentLink", e.target.checked)} /><span className="toggle-slider"></span></label>
+              </div>
+            </div>
+            <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
+            <LinkField label="StarterKit Payment Link (₦9,500)" current={f.paymentLink1} value={f.paymentLink1} onChange={(v) => up("paymentLink1", v)} placeholder="https://pay.example/incossifykit" />
+            <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
+            <LinkField label="Apex Payment Link (₦15,000)" current={f.paymentLink2} value={f.paymentLink2} onChange={(v) => up("paymentLink2", v)} placeholder="https://pay.example/incossifyape" />
+          </Card>
+
+          {/* Social Settings */}
+          <Card icon={hdIc.people} title="Social Settings">
+            <span className="field-label" style={{ display: "block", marginBottom: "0.75rem" }}>Use Social</span>
+            <div className="social-pick">
+              <button type="button" className={`social-opt ${f.socialLink === "tg" ? "active" : ""}`} onClick={() => up("socialLink", "tg")}>Telegram</button>
+              <button type="button" className={`social-opt ${f.socialLink === "wa" ? "active" : ""}`} onClick={() => up("socialLink", "wa")}>WhatsApp</button>
+            </div>
+            <div className="link-status"></div>
+          </Card>
+
+          {/* Telegram */}
+          <Card icon={hdIc.people} title="Telegram Redirect Link">
+            <LinkField label="Current link" current={f.telegramLink} value={f.telegramLink} onChange={(v) => up("telegramLink", v)} placeholder="https://t.me/your_channel_or_group" />
+          </Card>
+
+          {/* WhatsApp */}
+          <Card icon={hdIc.whatsapp} title="WhatsApp Redirect Link">
+            <LinkField label="Current link" current={f.whatsappLink} value={f.whatsappLink} onChange={(v) => up("whatsappLink", v)} placeholder="https://wa.me/2348012345678" />
+          </Card>
+
+          {/* Activations (extra) */}
+          <Card icon={hdIc.people} title={`User Activations${pending.length ? ` (${pending.length})` : ""}`}>
+            {pending.length === 0 ? (
+              <p style={{ fontSize: "0.85rem", opacity: 0.6 }}>No pending activations. 🎉</p>
+            ) : (
+              <div style={{ display: "grid", gap: "0.6rem" }}>
+                {pending.map((u) => (
+                  <div key={u.uid} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgb(255 255 255 / 0.03)", border: "1px solid var(--border)", borderRadius: 14, padding: "0.75rem 1rem" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <b style={{ fontSize: "0.9rem" }}>{u.fullName}</b>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>@{u.username} · {u.email}</div>
+                      <div style={{ fontSize: "0.72rem", opacity: 0.5, marginTop: 2 }}>{u.paymentReference}</div>
+                    </div>
+                    <span className="badge-pill dim">{u.packageName}</span>
+                    <button className="btn btn-aqua btn-sm" onClick={() => run(() => adminActivateUserAction(u.uid))}>Activate</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Withdrawals (extra) */}
+          <Card icon={hdIc.bank} title={`Withdrawal Requests${pendingWd.length ? ` (${pendingWd.length})` : ""}`}>
+            {pendingWd.length === 0 ? (
+              <p style={{ fontSize: "0.85rem", opacity: 0.6 }}>No pending withdrawal requests.</p>
+            ) : (
+              <div style={{ display: "grid", gap: "0.6rem" }}>
+                {pendingWd.map((w) => (
+                  <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgb(255 255 255 / 0.03)", border: "1px solid var(--border)", borderRadius: 14, padding: "0.75rem 1rem" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <b style={{ fontSize: "0.9rem" }}>{fmtN(w.amount)}</b>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>{w.bankName} · {w.accountName} · {w.accountNumber}</div>
+                      <div style={{ fontSize: "0.72rem", opacity: 0.5, marginTop: 2 }}>{dateTxt(w.date)}</div>
+                    </div>
+                    <button className="btn btn-aqua btn-sm" onClick={() => run(() => adminWithdrawalAction(w.id, "approve"))}>Mark paid</button>
+                    <button className="btn btn-sm" style={{ border: "1px solid color-mix(in oklab, oklch(65% 0.22 25) 60%, transparent)", color: "oklch(80% 0.16 25)" }} onClick={() => run(() => adminWithdrawalAction(w.id, "reject"))}>Reject</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
 
-        {tab === "config" && <ConfigCard config={config} />}
-
-        {(tab === "activations" || tab === "users") && (
-          <div className="admin-card glass-strong">
-            <div className="hd">
-              <div className="ic"><Ico d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /></div>
-              <h2>{tab === "activations" ? "Pending activations" : "All users"}</h2>
-            </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--foreground)", opacity: 0.6, marginBottom: "1rem" }}>Confirm a user&apos;s payment and activate to credit their 100% welcome bonus.</p>
-            <div className="adm-scroll">
-              <table className="adm-tbl">
-                <thead><tr><th>User</th><th>Package</th><th>Balance</th><th>Ref</th><th>Joined</th><th></th></tr></thead>
-                <tbody>
-                  {(tab === "activations" ? pending : users).map((u) => (
-                    <tr key={u.uid}>
-                      <td><b>{u.fullName}</b><br /><span style={{ fontSize: "0.75rem", opacity: 0.6 }}>@{u.username} · {u.email}</span></td>
-                      <td><span className="badge-pill dim">{u.packageName}</span></td>
-                      <td>{fmtN(u.total)}</td>
-                      <td style={{ fontSize: "0.78rem" }}>{u.paymentReference}</td>
-                      <td style={{ fontSize: "0.78rem" }}>{dateTxt(u.joined)}</td>
-                      <td>
-                        {u.activated ? (
-                          <span className="badge-pill ok">Active</span>
-                        ) : u.pkg !== "free" ? (
-                          <button className="btn btn-aqua btn-sm" onClick={() => run(() => adminActivateUserAction(u.uid))}>Activate</button>
-                        ) : (
-                          <span className="badge-pill dim">Free</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {tab === "withdrawals" && (
-          <div className="admin-card glass-strong">
-            <div className="hd"><div className="ic"><Ico d="M3 9 12 2l9 7v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></div><h2>Withdrawal requests</h2></div>
-            <p style={{ fontSize: "0.85rem", color: "var(--foreground)", opacity: 0.6, marginBottom: "1rem" }}>Approve requests you&apos;ve paid out; reject to refund the user&apos;s balance.</p>
-            <div className="adm-scroll">
-              <table className="adm-tbl">
-                <thead><tr><th>Amount</th><th>Bank details</th><th>Status</th><th>Date</th><th></th></tr></thead>
-                <tbody>
-                  {withdrawals.map((w) => (
-                    <tr key={w.id}>
-                      <td><b>{fmtN(w.amount)}</b><br /><span style={{ fontSize: "0.75rem", opacity: 0.6 }}>{w.id}</span></td>
-                      <td>{w.bankName}<br /><span style={{ fontSize: "0.78rem", opacity: 0.6 }}>{w.accountName} · {w.accountNumber}</span></td>
-                      <td><span className={`badge-pill ${w.status === "Pending" ? "warn" : w.status === "Rejected" ? "bad" : "ok"}`}>{w.status}</span></td>
-                      <td style={{ fontSize: "0.78rem" }}>{dateTxt(w.date)}</td>
-                      <td>
-                        {w.status === "Pending" && (
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button className="btn btn-aqua btn-sm" onClick={() => run(() => adminWithdrawalAction(w.id, "approve"))}>Mark paid</button>
-                            <button className="btn btn-sm" style={{ border: "1px solid color-mix(in oklab, oklch(65% 0.22 25) 60%, transparent)", color: "oklch(80% 0.16 25)" }} onClick={() => run(() => adminWithdrawalAction(w.id, "reject"))}>Reject</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5rem" }}>
+          <button className="signout" style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.7, border: "1px solid var(--border)", borderRadius: 999, padding: "0.55rem 1.4rem", background: "rgb(255 255 255 / 0.04)", cursor: "pointer", fontFamily: "inherit" }}
+            onClick={async () => { await adminLogoutAction(); router.push("/admin/login"); }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "1rem", width: "1rem" }}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );
