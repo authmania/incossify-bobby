@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { adminAuthed } from "@/lib/admin";
+import { adminAuthed, loadAppLinks } from "@/lib/admin";
 import { loadConfig } from "@/lib/config";
 import { AdminDashboard } from "@/components/admin";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   if (!(await adminAuthed())) redirect("/admin/login");
 
-  const config = await loadConfig();
+  const [config, app] = await Promise.all([loadConfig(), loadAppLinks()]);
 
   return (
     <AdminDashboard
@@ -23,6 +23,7 @@ export default async function AdminPage() {
         whatsappLink: config.whatsappLink,
         socialLink: config.socialLink,
       }}
+      app={{ cta: app.cta, telegramLink: app.telegramLink, telegramGroupLink: app.telegramGroupLink }}
     />
   );
 }

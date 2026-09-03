@@ -94,3 +94,18 @@ export async function listWithdrawals(limitN = 200): Promise<Withdrawal[]> {
   });
   return out;
 }
+
+/** Links the mobile app (incossify-app) reads from apps/incossify. */
+export async function loadAppLinks(): Promise<{ cta: string; telegramLink: string; telegramGroupLink: string }> {
+  try {
+    const snap = await getDoc(doc(db, "apps", "incossify"));
+    const d = snap.exists() ? snap.data() : {};
+    return {
+      cta: typeof d.cta === "string" ? d.cta : "",
+      telegramLink: typeof d.telegramLink === "string" ? d.telegramLink : "",
+      telegramGroupLink: typeof d.telegramGroupLink === "string" ? d.telegramGroupLink : "",
+    };
+  } catch {
+    return { cta: "", telegramLink: "", telegramGroupLink: "" };
+  }
+}

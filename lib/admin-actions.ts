@@ -52,6 +52,16 @@ export async function adminSaveConfigAction(patch: Partial<SiteConfig>): Promise
   return {};
 }
 
+// Links read by the mobile app (incossify-app) from apps/incossify.
+export async function adminSaveAppLinksAction(patch: { cta?: string; telegramLink?: string; telegramGroupLink?: string }): Promise<{ error?: string }> {
+  const clean: Record<string, unknown> = {};
+  if (typeof patch.cta === "string") clean.cta = patch.cta;
+  if (typeof patch.telegramLink === "string") clean.telegramLink = patch.telegramLink;
+  if (typeof patch.telegramGroupLink === "string") clean.telegramGroupLink = patch.telegramGroupLink;
+  await setDoc(doc(db, "apps", "incossify"), clean, { merge: true });
+  return {};
+}
+
 export async function adminActivateUserAction(uid: string): Promise<{ error?: string }> {
   const user = await getUserByUid(uid);
   if (!user) return { error: "User not found." };

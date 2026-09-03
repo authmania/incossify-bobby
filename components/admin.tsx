@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { adminLoginAction, adminLogoutAction, adminSaveConfigAction } from "@/lib/admin-actions";
+import { adminLoginAction, adminLogoutAction, adminSaveConfigAction, adminSaveAppLinksAction } from "@/lib/admin-actions";
 
+type AppDraft = {
+  cta: string;
+  telegramLink: string;
+  telegramGroupLink: string;
+};
 type ConfigDraft = {
   bankName: string; accountName: string; accountNumber: string;
   paymentLink1: string; paymentLink2: string;
@@ -73,18 +78,27 @@ function LinkField({ label, current, value, onChange, placeholder }: { label: st
 }
 
 // ── Princess-style admin panel ──
-export function AdminDashboard({ config }: { config: ConfigDraft }) {
+export function AdminDashboard({ config, app }: { config: ConfigDraft; app: AppDraft }) {
   const router = useRouter();
   const [f, setF] = useState<ConfigDraft>(config);
+  const [a, setA] = useState<AppDraft>(app);
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(f) !== JSON.stringify(config);
+  const appDirty = JSON.stringify(a) !== JSON.stringify(app);
   const up = <K extends keyof ConfigDraft>(k: K, v: ConfigDraft[K]) => setF((p) => ({ ...p, [k]: v }));
+  const upApp = <K extends keyof AppDraft>(k: K, v: AppDraft[K]) => setA((p) => ({ ...p, [k]: v }));
 
   const saveAll = async () => {
     setSaving(true);
-    const r = await adminSaveConfigAction(f);
+    if (dirty) {
+      const r = await adminSaveConfigAction(f);
+      if (r.error) { setSaving(false); return toast("❌ " + r.error); }
+    }
+    if (appDirty) {
+      const r = await adminSaveAppLinksAction(a);
+      if (r.error) { setSaving(false); return toast("❌ " + r.error); }
+    }
     setSaving(false);
-    if (r.error) { toast("❌ " + r.error); return; }
     toast("✅ Settings saved!");
   };
 
@@ -105,7 +119,7 @@ export function AdminDashboard({ config }: { config: ConfigDraft }) {
             <img src="/logo-CUooZ1Ch.png" alt="Incossify" style={{ height: "2rem", width: "2rem", objectFit: "contain" }} />
             <span style={{ fontWeight: 800, fontSize: "1.1rem" }}>Incossify <span style={{ color: "var(--primary)" }}>Admin</span></span>
           </div>
-          <button className="btn btn-aqua" type="button" style={{ marginLeft: "auto", display: dirty ? "inline-flex" : "none", padding: "0.5rem 1.1rem", fontSize: "0.8rem" }} disabled={saving} onClick={saveAll}>
+          <button className="btn btn-aqua" type="button" style={{ marginLeft: "auto", display: dirty || appDirty ? "inline-flex" : "none", padding: "0.5rem 1.1rem", fontSize: "0.8rem" }} disabled={saving} onClick={saveAll}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "0.875rem", width: "0.875rem" }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
             {saving ? "Saving…" : "Save Changes"}
           </button>
@@ -158,6 +172,16 @@ export function AdminDashboard({ config }: { config: ConfigDraft }) {
           {/* WhatsApp */}
           <Card icon={hdIc.whatsapp} title="WhatsApp Redirect Link">
             <LinkField label="Current link" current={f.whatsappLink} value={f.whatsappLink} onChange={(v) => up("whatsappLink", v)} placeholder="https://wa.me/2348012345678" />
+          </Card>
+
+          {/* App links (read by incossify-app) */}
+          <Card icon={<Ico d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />} title="App">
+            <span className="current-label" style={{ display: "block", marginBottom: "0.5rem" }}>Links used by the Incossify mobile app.</span>
+            <LinkField label="CTA / signup link" current={a.cta} value={a.cta} onChange={(v) => upApp("cta", v)} placeholder="https://www.incossify.com" />
+            <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
+            <LinkField label="App Telegram link" current={a.telegramLink} value={a.telegramLink} onChange={(v) => upApp("telegramLink", v)} placeholder="https://t.me/your_channel_or_group" />
+            <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
+            <LinkField label="Telegram group link" current={a.telegramGroupLink} value={a.telegramGroupLink} onChange={(v) => upApp("telegramGroupLink", v)} placeholder="https://t.me/your_group" />
           </Card>
 
         </div>

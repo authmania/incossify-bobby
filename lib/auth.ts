@@ -5,6 +5,7 @@ import { randomBytes } from "crypto";
 import { db } from "./firebase";
 import {
   collection, doc, getDoc, setDoc, deleteDoc, query, where, limit, getDocs,
+  type DocumentData,
 } from "firebase/firestore";
 import type { PublicUser, User } from "./types";
 
@@ -51,7 +52,7 @@ export async function getUserByPaymentReference(ref: string): Promise<User | nul
 
 function toUser(snap: { exists(): boolean; id: string; data(): DocumentData | undefined }): User | null {
   if (!snap.exists()) return null;
-  const d = snap.data();
+  const d = snap.data()!;
   return {
     uid: d.uid || snap.id,
     fullName: d.fullName || "",
