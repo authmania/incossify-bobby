@@ -120,11 +120,11 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
     if (r.error) toasts(r.error); else { toasts("+" + money(reward) + " claimed!"); router.refresh(); }
   };
 
-  const claimSong = async () => {
+  const finishSong = async () => {
     const r = await claimSongAction(user.uid);
     if (r.error) toasts(r.error);
     else toasts("+" + money(r.reward || 0) + " earned!");
-    router.refresh();
+    window.location.href = "/dashboard";
   };
 
   const openMusic = (song: Song) => { setMusic(song); setGateOpen(false); };
@@ -384,7 +384,7 @@ export function DashboardClient({ user, day, ledger }: { user: Snapshot; day: st
 
       {/* Music modal */}
       {music && (
-        <MusicModal song={music} reward={SONG_REWARD} money={money} url={musicMeta[music.id]?.url || ""} art={musicMeta[music.id]?.art || ""} onClose={() => { setMusic(null); }} onClaim={async () => { await claimSong(); setMusic(null); }} />
+        <MusicModal song={music} reward={SONG_REWARD} money={money} url={musicMeta[music.id]?.url || ""} art={musicMeta[music.id]?.art || ""} onClose={() => { setMusic(null); }} onClaim={finishSong} />
       )}
     </div>
   );
@@ -407,11 +407,16 @@ function MenuIc({ d, circle }: { d: string; circle?: boolean }) {
 
 function MusicModal({ song, reward, money, url, art, onClose, onClaim }: { song: Song; reward: number; money: (n: number) => string; url: string; art: string; onClose: () => void; onClaim: () => Promise<void> }) {
   const [earn, setEarn] = useState(0);
-  const [sec, setSec] = useState(0);
+  const [earnVisible, setEarnVisible] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [remain, setRemain] = useState(12);
   const [done, setDone] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
   const started = useRef(false);
-  const progress = Math.min(100, (sec / 3.5) * 100);
+
+  const SHOW_AT = 3500; // ms until the earnings counter appears
+  const EARN_WINDOW = 8000; // ms the counter counts up
+  const TOTAL = SHOW_AT + EARN_WINDOW; // 11.5s per song
 
   // Play ONE source chosen up front — the real preview if we already have it,
   // otherwise the bundled sample. Never swap mid-play (princess behaviour).
@@ -423,20 +428,30 @@ function MusicModal({ song, reward, money, url, art, onClose, onClaim }: { song:
     audio.current.play().catch(() => {});
   }, [url]);
 
+  // Smooth timeline driven by elapsed time: bar fills to 100% exactly when the
+  // session ends and the earnings counter reaches the full reward.
   useEffect(() => {
-    const id = setInterval(() => {
-      setSec((s) => {
-        if (s >= 11) { clearInterval(id); return s; }
-        return s + 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (sec >= 3) setEarn(Math.floor((Math.min(sec, 11) / 11) * reward));
-    if (sec >= 11 && !done) { setDone(true); audio.current?.pause(); }
-  }, [sec, done, reward]);
+    let raf = 0;
+    const start = Date.now();
+    const frame = () => {
+      const elapsed = Date.now() - start;
+      setPct(Math.min(100, (elapsed / TOTAL) * 100));
+      setRemain(Math.max(0, Math.ceil((TOTAL - elapsed) / 1000)));
+      if (elapsed >= SHOW_AT) {
+        setEarnVisible(true);
+        setEarn(Math.min(reward, Math.floor(((elapsed - SHOW_AT) / EARN_WINDOW) * reward)));
+      }
+      if (elapsed >= TOTAL) {
+        setEarn(reward);
+        setDone(true);
+        audio.current?.pause();
+        return;
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [SHOW_AT, EARN_WINDOW, TOTAL, reward]);
 
   const fmtTime = (s: number) => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 
@@ -453,10 +468,10 @@ function MusicModal({ song, reward, money, url, art, onClose, onClaim }: { song:
           <div className="tm-art">{art ? <img src={art} alt={song.song} /> : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>}</div>
           <h2>{song.song}</h2>
           <p id="tmArtist">{song.artist}</p>
-          <div className="tm-progress"><div className="tm-progress-bar" style={{ width: progress + "%" }}></div></div>
-          <div className="tm-time-row"><span>{fmtTime(Math.min(sec, 11))}</span><span>{fmtTime(11)}</span></div>
+          <div className="tm-progress"><div className="tm-progress-bar" style={{ width: pct + "%" }}></div></div>
+          <div className="tm-time-row"><span>{done ? "Complete" : "Listening…"}</span><span>{fmtTime(remain)}</span></div>
           <audio ref={audio} preload="auto" playsInline />
-          <div className="tm-earn" style={{ display: earn > 0 ? "block" : "none" }}><span>Earnings</span><strong>{money(earn)}</strong></div>
+          <div className="tm-earn" style={{ display: earnVisible ? "block" : "none" }}><span>Earnings</span><strong>{money(earn)}</strong></div>
         </div>
         <div className="tm-actions">
           <button className={`tm-end ${done ? "done" : ""}`} type="button" onClick={() => (done ? onClaim() : onClose())}>{done ? "Done" : "End"}</button>
