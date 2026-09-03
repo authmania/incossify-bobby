@@ -143,8 +143,6 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
   };
   const go = (href: string) => { router.push(href); setMenuOpen(false); };
   const toggleMenu = () => setMenuOpen((o) => !o);
-  const copyRef = () => navigator.clipboard.writeText(user.referralUrl).then(() => toasts("Referral link copied")).catch(() => toasts(user.referralUrl));
-  const shareRef = () => { if (navigator.share) navigator.share({ title: "Join Incossify", text: "Earn daily with Incossify", url: user.referralUrl }).catch(() => {}); else copyRef(); };
   const logout = async () => { try { await logoutAction(); } catch { /* redirect handled */ } };
 
   const claimShare = async (id: string, reward: number) => {
@@ -167,10 +165,8 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const growthLabel = user.active ? (user.pkg === "apex" ? "APEX" : "STARTERKIT") : "FREE";
+  const growthLabel = user.active ? "APEX" : "FREE";
   const growthColor = user.active ? "#6ee7b7" : "#ff5b5b";
-
-  const shortRef = user.referralUrl.length > 30 ? user.referralUrl.slice(0, 30) + "…" : user.referralUrl;
 
   return (
     <div className="phone">
@@ -280,21 +276,6 @@ export function DashboardClient({ user, day, ledger, tgLink }: { user: Snapshot;
             <div className="quick-action-icon invite"><svg width="14" height="16" viewBox="0 0 14 16" fill="none"><circle cx="7" cy="4" r="3.2" stroke="white" strokeWidth="1.4" /><path d="M1 15C1 11.5 3.5 9.5 7 9.5C10.5 9.5 13 11.5 13 15" stroke="white" strokeWidth="1.4" strokeLinecap="round" /></svg></div>
             <div className="quick-action-label">Profile</div>
           </button>
-        </div>
-
-        {/* Shares link */}
-        <div className="shares-card">
-          <h3>Your Shares Link</h3>
-          <p>Share and earn on every signup</p>
-          <div className="shares-link-row">
-            <div className="shares-link-text">{shortRef}</div>
-            <button className="shares-icon-btn" onClick={copyRef} aria-label="Copy link">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5" stroke="white" strokeWidth="1.3" /><path d="M1.5 9.5V2.5C1.5 1.9 1.9 1.5 2.5 1.5H9.5" stroke="white" strokeWidth="1.3" /></svg>
-            </button>
-            <button className="shares-icon-btn" onClick={shareRef} aria-label="Share link">
-              <svg width="14" height="15" viewBox="0 0 14 15" fill="none"><circle cx="11" cy="2.5" r="2" stroke="white" strokeWidth="1.2" /><circle cx="11" cy="12.5" r="2" stroke="white" strokeWidth="1.2" /><circle cx="3" cy="7.5" r="2" stroke="white" strokeWidth="1.2" /><path d="M4.7 6.5L9.3 3.5M4.7 8.5L9.3 11.5" stroke="white" strokeWidth="1.2" /></svg>
-            </button>
-          </div>
         </div>
 
         {/* Daily Tasks */}

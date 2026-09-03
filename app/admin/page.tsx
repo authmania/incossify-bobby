@@ -20,6 +20,7 @@ export default async function AdminPage() {
         paymentLink2: config.paymentLink2,
         usePaymentLink: config.usePaymentLink,
         telegramLink: config.telegramLink,
+        telegramGroupLink: config.telegramGroupLink,
         whatsappLink: config.whatsappLink,
         socialLink: config.socialLink,
       }}

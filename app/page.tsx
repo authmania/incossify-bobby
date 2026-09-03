@@ -241,7 +241,7 @@ const Landing = () => (
             <div className="reveal">
               <div className="grid-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/flyer-110333-Qs8c3z28.jpg" alt="StarterKit package earning structure" className="flyer-img" loading="lazy" />
+                <img src="/flyer-110333-Qs8c3z28.jpg" alt="Apex package earning structure" className="flyer-img" loading="lazy" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/flyer-110423-BFe0pvC8.jpg" alt="Apex package earning structure" className="flyer-img" loading="lazy" />
               </div>
@@ -262,29 +262,15 @@ const Landing = () => (
           <div className="wrap-lg">
             <div className="reveal">
               <div className="sec-title center">
-                <p style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.25em", color: "var(--primary)", fontWeight: 700 }}>Choose your package</p>
+                <p style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.25em", color: "var(--primary)", fontWeight: 700 }}>Your activation</p>
                 <h2>One-time activation. Lifetime access.</h2>
                 <p>Early bird pricing is live — you get 100% of your registration fee back as a welcome bonus.</p>
               </div>
             </div>
             <div className="grid-2" style={{ marginTop: "3rem" }}>
-              <div className="reveal">
-                <div className="package glass">
-                  <h3>StarterKit Package</h3>
-                  <p className="tagline">Perfect for new earners starting today</p>
-                  <div className="price-row"><span className="price text-gradient-aqua">₦9,500</span></div>
-                  <p className="daily">7,900 / £3.45 daily</p>
-                  <ul>
-                    {["100% welcome commission — ₦9,500 / £4.75", "Inn-shares: 8,000 / £4.00", "Inn-Reshares: 200 / £0.10", "Daily tasks up to 7,900 / £3.45", "Raffle, grant & sports rewards"].map((x) => (
-                      <li key={x}><span className="check"><Check /></span>{x}</li>
-                    ))}
-                  </ul>
-                  <Link className="btn btn-aqua" href="/register?package=starterkit">Activate StarterKit <ArrowRight /></Link>
-                </div>
-              </div>
-              <div className="reveal" style={{ transitionDelay: "100ms" }}>
-                <div className="package glass-strong popular">
-                  <span className="flag">Most popular</span>
+              <div className="reveal" style={{ gridColumn: "1 / -1" }}>
+                <div className="package glass-strong popular" style={{ maxWidth: 480, margin: "0 auto" }}>
+                  <span className="flag">One package</span>
                   <h3>Apex Package</h3>
                   <p className="tagline">Highest daily payouts and full access</p>
                   <div className="price-row"><span className="price text-gradient-aqua">₦15,000</span></div>
@@ -332,7 +318,7 @@ const Landing = () => (
             </div>
             <div className="grid-3" style={{ marginTop: "3rem" }}>
               {[
-                ["B", "Blessing A.", "Lagos", "I joined with the StarterKit and got my ₦9,500 back the same day as welcome bonus. My first withdrawal cleared in minutes."],
+                ["B", "Blessing A.", "Lagos", "I joined with Apex and got my ₦15,000 back the same day as my welcome bonus. My first withdrawal cleared in minutes."],
                 ["I", "Ibrahim K.", "Kano", "The Apex package pays more per task. I do my shares in the morning and surveys at night — it adds up fast."],
                 ["C", "Chidera O.", "Enugu", "What I love is how simple it is. Post, share, submit, get paid. No stress, no complicated targets."],
               ].map(([av, name, city, quote], i) => (

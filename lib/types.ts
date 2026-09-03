@@ -64,6 +64,7 @@ export interface SiteConfig {
   paymentLink2: string; // apex
   usePaymentLink: boolean;
   telegramLink: string;
+  telegramGroupLink: string;
   whatsappLink: string;
   socialLink: "tg" | "wa";
   supportTelegram: string;

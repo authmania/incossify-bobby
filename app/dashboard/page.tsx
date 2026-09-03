@@ -35,7 +35,7 @@ export default async function DashboardPage() {
           rewards: user.wallets?.rewards || 0,
         },
       }}
-      tgLink={config.telegramLink || config.supportTelegram}
+      tgLink={config.telegramGroupLink || config.telegramLink || config.supportTelegram}
       day={day}
       ledger={ledger}
     />

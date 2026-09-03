@@ -13,7 +13,7 @@ type ConfigDraft = {
   bankName: string; accountName: string; accountNumber: string;
   paymentLink1: string; paymentLink2: string;
   usePaymentLink: boolean;
-  telegramLink: string; whatsappLink: string; socialLink: "tg" | "wa";
+  telegramLink: string; telegramGroupLink: string; whatsappLink: string; socialLink: "tg" | "wa";
 };
 
 function toast(msg: string) {
@@ -83,16 +83,30 @@ export function AdminDashboard({ config, app }: { config: ConfigDraft; app: AppD
   const [f, setF] = useState<ConfigDraft>(config);
   const [a, setA] = useState<AppDraft>(app);
   const [saving, setSaving] = useState(false);
-  const dirty = JSON.stringify(f) !== JSON.stringify(config);
+  const [savedCfg, setSavedCfg] = useState<ConfigDraft>(config);
+  const dirty = JSON.stringify(f) !== JSON.stringify(savedCfg);
   const appDirty = JSON.stringify(a) !== JSON.stringify(app);
   const up = <K extends keyof ConfigDraft>(k: K, v: ConfigDraft[K]) => setF((p) => ({ ...p, [k]: v }));
   const upApp = <K extends keyof AppDraft>(k: K, v: AppDraft[K]) => setA((p) => ({ ...p, [k]: v }));
+
+  // Payment-links toggle autosaves immediately — no Save Changes needed.
+  const togglePaymentLinks = async (checked: boolean) => {
+    setF((p) => ({ ...p, usePaymentLink: checked }));
+    const r = await adminSaveConfigAction({ usePaymentLink: checked });
+    if (r.error) {
+      setF((p) => ({ ...p, usePaymentLink: !checked }));
+      return toast("❌ " + r.error);
+    }
+    setSavedCfg((p) => ({ ...p, usePaymentLink: checked }));
+    toast(`✅ Payment links ${checked ? "enabled" : "disabled"}`);
+  };
 
   const saveAll = async () => {
     setSaving(true);
     if (dirty) {
       const r = await adminSaveConfigAction(f);
       if (r.error) { setSaving(false); return toast("❌ " + r.error); }
+      setSavedCfg(f);
     }
     if (appDirty) {
       const r = await adminSaveAppLinksAction(a);
@@ -113,7 +127,7 @@ export function AdminDashboard({ config, app }: { config: ConfigDraft; app: AppD
     <div className="admin-shell">
       <div className="grad"></div>
       <div className="inner">
-        <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
+        <header className="admin-head">
           <div className="brand" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-CUooZ1Ch.png" alt="Incossify" style={{ height: "2rem", width: "2rem", objectFit: "contain" }} />
@@ -122,10 +136,6 @@ export function AdminDashboard({ config, app }: { config: ConfigDraft; app: AppD
           <button className="btn btn-aqua" type="button" style={{ marginLeft: "auto", display: dirty || appDirty ? "inline-flex" : "none", padding: "0.5rem 1.1rem", fontSize: "0.8rem" }} disabled={saving} onClick={saveAll}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ height: "0.875rem", width: "0.875rem" }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
             {saving ? "Saving…" : "Save Changes"}
-          </button>
-          <button className="signout" style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", opacity: 0.7, border: "1px solid var(--border)", borderRadius: 999, padding: "0.55rem 1.4rem", background: "rgb(255 255 255 / 0.04)", cursor: "pointer", fontFamily: "inherit" }}
-            onClick={async () => { await adminLogoutAction(); router.push("/admin/login"); }}>
-            Logout
           </button>
         </header>
 
@@ -145,11 +155,9 @@ export function AdminDashboard({ config, app }: { config: ConfigDraft; app: AppD
               <div className="toggle-label">Enable Payment Links <small>(Use payment links instead of bank transfer)</small></div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto" }}>
                 <span className={`toggle-status ${f.usePaymentLink ? "active" : "inactive"}`}>{f.usePaymentLink ? "ON" : "OFF"}</span>
-                <label className="toggle-switch"><input type="checkbox" checked={f.usePaymentLink} onChange={(e) => up("usePaymentLink", e.target.checked)} /><span className="toggle-slider"></span></label>
+                <label className="toggle-switch"><input type="checkbox" checked={f.usePaymentLink} onChange={(e) => togglePaymentLinks(e.target.checked)} /><span className="toggle-slider"></span></label>
               </div>
             </div>
-            <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
-            <LinkField label="StarterKit Payment Link (₦9,500)" current={f.paymentLink1} value={f.paymentLink1} onChange={(v) => up("paymentLink1", v)} placeholder="https://pay.example/incossifykit" />
             <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
             <LinkField label="Apex Payment Link (₦15,000)" current={f.paymentLink2} value={f.paymentLink2} onChange={(v) => up("paymentLink2", v)} placeholder="https://pay.example/incossifyape" />
           </Card>
@@ -165,8 +173,10 @@ export function AdminDashboard({ config, app }: { config: ConfigDraft; app: AppD
           </Card>
 
           {/* Telegram */}
-          <Card icon={hdIc.people} title="Telegram Redirect Link">
-            <LinkField label="Current link" current={f.telegramLink} value={f.telegramLink} onChange={(v) => up("telegramLink", v)} placeholder="https://t.me/your_channel_or_group" />
+          <Card icon={hdIc.people} title="Telegram Links">
+            <LinkField label="Link to DM" current={f.telegramLink} value={f.telegramLink} onChange={(v) => up("telegramLink", v)} placeholder="https://t.me/bobbysupport" />
+            <div style={{ height: 1, background: "var(--border)", margin: "1rem 0" }}></div>
+            <LinkField label="Link to group" current={f.telegramGroupLink} value={f.telegramGroupLink} onChange={(v) => up("telegramGroupLink", v)} placeholder="https://t.me/your_group" />
           </Card>
 
           {/* WhatsApp */}

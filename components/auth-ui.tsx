@@ -122,7 +122,7 @@ export function RegisterForm({ pkg }: { pkg: string | null }) {
     >
       <h1 style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em" }}>Create Account</h1>
       <p style={{ marginTop: "0.25rem", fontSize: "0.875rem", color: "var(--foreground)", opacity: 0.65 }}>
-        {pkg ? `Joining with ${pkg === "apex" ? "Apex" : "StarterKit"} — pay the activation fee from your dashboard after signup. ` : null}
+        {pkg ? "Joining with Apex — pay the ₦15,000 activation fee from your dashboard after signup. " : null}
         Already registered? <Link href="/login" style={{ color: "var(--primary)", fontWeight: 600 }}>Sign in</Link>
       </p>
 

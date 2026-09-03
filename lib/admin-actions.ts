@@ -42,7 +42,7 @@ export async function adminSaveConfigAction(patch: Partial<SiteConfig>): Promise
   const allowed = new Set([
     "bankName", "accountName", "accountNumber",
     "paymentLink1", "paymentLink2", "usePaymentLink",
-    "telegramLink", "whatsappLink", "socialLink", "supportTelegram",
+    "telegramLink", "telegramGroupLink", "whatsappLink", "socialLink", "supportTelegram",
   ]);
   const clean: Partial<SiteConfig> = {};
   for (const [k, v] of Object.entries(patch)) {
